@@ -1,21 +1,28 @@
-const bodyParser = require('body-parser');
 const express = require('express');
-const morgan = require('morgan');
-
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
 const app = express();
 
-app.set('port', process.env.port || 8000);
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Authorization, X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Request-Method');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-    res.header('Allow', 'GET, POST, OPTIONS, PUT, DELETE');
-    next();
+// Cargar las variables de entorno
+require('dotenv').config();
+
+// Conectar a mongoose
+mongoose.connect('mongodb://localhost:27017/CSA', {useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false, useCreateIndex: true});
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function() {
+    console.log(`[status] Conectado a Mongoose`);
 });
-app.use(morgan('dev'));
+
+// Body parser
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-app.use(require('./routes'));
+// Rutas divididas en modulos
+//app.use('/', require('./Routes/siipersu.routes'));
+app.use('/', require('./Routes/CA.routes'));
 
-app.listen(app.get('port'), () => console.log('Corriendo en puerto: ' + app.get('port')));
+// Correr el puerto
+app.listen(process.env.PORT, function() {
+    console.log(`[status] API Corriendo en el puerto ${process.env.PORT}`);
+});
