@@ -2,21 +2,22 @@ const CuerpoAcademico = require('../Models/CA.model');
 
 module.exports.postCuerpoAcademico = async (req, res) => {
     try {
-        const resp2 = await CuerpoAcademico.findOne({clave: req.body.clave}, function(err, CA){
-            if(CA)
-                return res.json({ok: false, message: 'Ya existe este cuerpo academico'});
-        });
-        var clave = req.body.clave;
-        var anio = req.body.anio_creacion;
-        var duracion = req.body.duracion;
-        var nivel = req.body.nivel;
-        var nombre = req.body.nombre;
-        var objCA = new CuerpoAcademico({clave: clave, anio_creacion: anio, duracion: duracion, nivel: nivel, nombre: nombre});
-        const resp = await objCA.save(function (err, CA){
-            if(err) 
-                return res.json({ok: false, err, message: 'Error al guardar'});
-            res.json({ok: true, objCA});
-        });
+        const resp2 = await CuerpoAcademico.findOne({clave: req.body.clave});
+        if(!resp2)
+        {
+            var clave = req.body.clave;
+            var anio = req.body.anio_creacion;
+            var duracion = req.body.duracion;
+            var nivel = req.body.nivel;
+            var nombre = req.body.nombre;
+            var objCA = new CuerpoAcademico({clave: clave, anio_creacion: anio, duracion: duracion, nivel: nivel, nombre: nombre});
+            const resp = await objCA.save();
+            if(!resp)
+                return res.json({ok: false, message: 'Error al guardar el documento'});
+            res.json({ok: true, resp});
+        }
+        else
+            return res.json({ok: false,  message: 'Ya existe el documento'});
     } catch (error) {
         res.json({ok: false, error});
     }
@@ -30,14 +31,18 @@ module.exports.putCuerpoAcademico = async (req, res) => {
         var duracion = req.body.duracion;
         var nivel = req.body.nivel;
         var nombre = req.body.nombre;
-        const resp = await CuerpoAcademico.findOneAndUpdate(query, {clave: clave, anio_creacion: anio, duracion: duracion, nivel: nivel, nombre: nombre}, function(err, CA){
-            if(err)
-                return res.json({ok: false, err, message: 'Error al actualizar'});
-            if(!CA)
-                return res.json({ok: false, message: 'No se encontro el documento'});
-            res.json({ok: true, CA});
-        });
-        
+        const resp = await CuerpoAcademico.findOne(query);
+        if(!resp)
+            return res.json({ok: false, message: 'No se encuentra el documento en la bd'});
+        resp.clave = clave;
+        resp.anio = anio;
+        resp.duracion = duracion;
+        resp.nivel = nivel;
+        resp.nombre = nombre;
+        const CA = await resp.save();
+        if(!CA)
+            return res.json({ok: false, message: 'Error al guardar documento'});
+        res.json({ok: true, CA});
     } catch (error) {
         res.json({ok: false, error});
     }

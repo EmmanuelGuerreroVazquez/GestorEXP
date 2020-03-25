@@ -1,39 +1,32 @@
 const CuerpoAcademico = require('../Models/CA.model');
-const fs = require('fs');
+const fsp = require('fs').promises;
 
 module.exports.postCuerpoAcademicoExp = async (req, res) => {
     try {
         var dir = './Files/uploads/'+req.params.id+'/expediente/';
         var expedienteDigitalizado = req.file.originalname;
-        var buffer;
-        await fs.mkdir(dir, {recursive: true}, function errDirCreate(err){
-            console.log('creando carpeta');
-            if(err)
-                console.log(err);
+        var errorH;
+        await fsp.mkdir(dir, {recursive: true}).catch(function errHandler(e){
+            errorH = e;
         });
-        await fs.rename('./Files/uploads/'+expedienteDigitalizado, dir + expedienteDigitalizado, function errMoveFile(err){
-                console.log('moviendo el archivo');
-                if(err)
-                    console.log(err);
-                fs.readFile(dir + expedienteDigitalizado, function handleFile(err,data){
-                    if(err)
-                        console.log(err);
-                    else
-                        buffer = data;
-                });
+        if(errorH)
+            return res.json({ok: false, errorH});
+        await fsp.rename('./Files/uploads/'+expedienteDigitalizado, dir + expedienteDigitalizado).catch(function errHandler(e){
+            errorH = e;
         });
-        await CuerpoAcademico.findOne({clave: req.params.id}, function handleDocument(err, CA){
-            console.log('guardando documento');
-                if(err) 
-                    return res.json({ok: false, err});
-                CA.expedienteDigitalizado = buffer;
-                CA.save(function saveFile(err, CA2){
-                if(err) 
-                    return res.json({ok: false, err});
-                res.json({ok: true, CA2});
-            });
-        });
-        
+        if(errorH)
+            return res.json({ok: false, errorH});
+        const buffer = await fsp.readFile(dir + expedienteDigitalizado);
+        if(!buffer)
+            return res.json({ok: false, message: 'No existe el archivo'});
+        const resp = await CuerpoAcademico.findOne({clave: req.params.id});
+        if(!resp)
+            return res.json({ok: false, message: 'No existe el documento en la bd'});
+        resp.expediente_digitalizado = buffer;
+        const CA = await resp.save();
+        if(!CA)
+            return res.json({ok: false, message: 'Error al guardar documento'});
+        res.json({ok: true, CA});
     } catch (error) {
         res.json({ok: false, error});
     }
@@ -43,30 +36,23 @@ module.exports.putCuerpoAcademicoExp = async (req, res) => {
     try {
         var dir = './Files/uploads/'+req.params.id+'/expediente/';
         var expedienteDigitalizado = req.file.originalname;
-        var buffer;
-        await fs.rename('./Files/uploads/'+expedienteDigitalizado, dir + expedienteDigitalizado, function errMoveFile(err){
-                console.log('moviendo el archivo');
-                if(err)
-                    console.log(err);
-                fs.readFile(dir + expedienteDigitalizado, function handleFile(err,data){
-                    if(err)
-                        console.log(err);
-                    else
-                        buffer = data;
-                });
+        var errorH;
+        await fsp.rename('./Files/uploads/'+expedienteDigitalizado, dir + expedienteDigitalizado).catch(function errHandler(e){
+            errorH = e;
         });
-        await CuerpoAcademico.findOne({clave: req.params.id}, function handleDocument(err, CA){
-            console.log('guardando documento');
-                if(err) 
-                    return res.json({ok: false, err});
-                CA.expediente_digitalizado = buffer;
-                CA.save(function saveFile(err, CA2){
-                if(err) 
-                    return res.json({ok: false, err});
-                res.json({ok: true, CA2});
-            });
-        });
-        
+        if(errorH)
+            return res.json({ok: false, errorH});
+        const buffer = await fsp.readFile(dir + expedienteDigitalizado);
+        if(!buffer)
+            return res.json({ok: false, message: 'No existe el archivo'});
+        const CA = await CuerpoAcademico.findOne({clave: req.params.id});
+        if(!CA)
+            return res.json({ok: false, message: 'No se encuentra el documento en la bd'});
+        CA.expediente_digitalizado = buffer;
+        const resp = await CA.save();
+        if(!resp)
+            return res.json({ok: false, message: 'Error al guardar el documento en la bd'});
+        res.json({ok: true, resp});
     } catch (error) {
         res.json({ok: false, error});
     }
@@ -76,31 +62,17 @@ module.exports.getCuerpoAcademicoExp = async (req, res) => {
     try {
         var codigo = req.params.id;
         var dir = './Files/temp/'+codigo+'.pdf';
-        var buffer;
-        await CuerpoAcademico.findOne({clave: codigo}, function(err,CA){
-            console.log('buscando documento');
-            if(err)
-            {
-                console.log('error de busqueda');
-            }
-
-            buffer = CA.expediente_digitalizado;
+        const CA = await CuerpoAcademico.findOne({clave: codigo});
+        const buffer = CA.expediente_digitalizado;
+        var errorH;
+        await fsp.writeFile(dir, buffer).catch(function errHandler(e){
+            errorH = e;
         });
-        await fs.writeFile(dir, buffer, function(err){
-            console.log('escribiendo documento');
-            if(err)
-            {
-                console.log('error de escritura');
-            }
-            res.download(dir, 'Expediente'+codigo+'.pdf', function(err){
-                fs.unlink(dir, function(err){
-                    if(err)
-                        console.log(err);
-                    });
-            });
+        if(errorH)
+            return res.json({ok: false, errorH});
+        res.download(dir, 'Expediente'+codigo+'.pdf', function(err){
+            fsp.unlink(dir);
         });
-        
-        
     } catch (error) {
         res.json({ok: false, error});
     }

@@ -1,37 +1,32 @@
 const CuerpoAcademico = require('../Models/CA.model');
-const fs = require('fs');
+const fsp = require('fs').promises;
 
 module.exports.postCuerpoAcademicoDic = async (req, res) => {
     try {
         var dir = './Files/uploads/' + req.params.id+'/dictamenes/';
         var dictamenDigitalizado = req.file.originalname;
-        await fs.mkdir(dir, {recursive: true}, function errDirCreate(err){
-            console.log('creando carpeta');
-            if(err)
-                console.log(err);
+        var errorH;
+        await fsp.mkdir(dir, {recursive: true}).catch(function errHandler(e){
+        	errorH = e;
         });
-        await fs.rename('./Files/uploads/'+dictamenDigitalizado, dir + dictamenDigitalizado, function errMoveFile(err){
-                console.log('moviendo el archivo');
-                if(err)
-                    console.log(err);
-                fs.readFile(dir + dictamenDigitalizado, function handleFile(err,data){
-                    if(err)
-                        console.log(err);
-                    else
-                        buffer = data;
-                });
+        if(errorH)
+        	return res.json({ok: false, errorH});
+        await fsp.rename('./Files/uploads/'+dictamenDigitalizado, dir + dictamenDigitalizado).catch(function errHandler(e){
+        	errorH = e;
         });
-        await CuerpoAcademico.findOne({clave: req.params.id}, function handleDocument(err, CA){
-            console.log('guardando documento');
-                if(err) 
-                    return res.json({ok: false, err});
-                CA.dictamen_digitalizado = buffer;
-                CA.save(function saveFile(err, CA2){
-                if(err) 
-                    return res.json({ok: false, err});
-                res.json({ok: true, CA2});
-            });
-        });
+        if(errorH)
+        	return res.json({ok: false, errorH});
+        const buffer = await fsp.readFile(dir + dictamenDigitalizado);
+        if(!buffer)
+        	return res.json({ok: false, message: 'No existe el archivo'});
+        const resp = await CuerpoAcademico.findOne({clave: req.params.id});
+        if(!resp)
+        	return res.json({ok: false, message: 'No existe el documento en la bd'});
+        resp.dictamen_digitalizado = buffer;
+        const CA = await resp.save();
+        if(!CA)
+        	return res.json({ok: false, message: 'Error al guardar documento'});
+        res.json({ok: true, CA});
     } catch (error) {
         res.json({ok: false, error});
     }
@@ -39,30 +34,27 @@ module.exports.postCuerpoAcademicoDic = async (req, res) => {
 
 module.exports.putCuerpoAcademicoDic = async (req, res) => {
     try {
+    	//Issue 1: solo guarda un dictamen a la vez, se debe modificar el schema para guardar multiples dictamenes
+    	//Se deben guardar con una id que los identifique, al schema le falta una id
         var dir = './Files/uploads/' + req.params.id+'/dictamenes/';
         var dictamenDigitalizado = req.file.originalname;
-        await fs.rename('./Files/uploads/'+dictamenDigitalizado, dir + dictamenDigitalizado, function errMoveFile(err){
-                console.log('moviendo el archivo');
-                if(err)
-                    console.log(err);
-                fs.readFile(dir + dictamenDigitalizado, function handleFile(err,data){
-                    if(err)
-                        console.log(err);
-                    else
-                        buffer = data;
-                });
+        var errorH;
+        await fsp.rename('./Files/uploads/'+dictamenDigitalizado, dir + dictamenDigitalizado).catch(function errHandler(e){
+        	errorH = e;
         });
-        await CuerpoAcademico.findOne({clave: req.params.id}, function handleDocument(err, CA){
-            console.log('guardando documento');
-                if(err) 
-                    return res.json({ok: false, err});
-                CA.dictamen_digitalizado = buffer;
-                CA.save(function saveFile(err, CA2){
-                if(err) 
-                    return res.json({ok: false, err});
-                res.json({ok: true, CA2});
-            });
-        });
+        if(errorH)
+        	return res.json({ok: false, errorH});
+        const buffer = await fsp.readFile(dir + dictamenDigitalizado);
+        if(!buffer)
+        	return res.json({ok: false, message: 'No existe el archivo'});
+        const CA = await CuerpoAcademico.findOne({clave: req.params.id});
+        if(!CA)
+        	return res.json({ok: false, message: 'No se encuentra el documento en la bd'});
+        CA.dictamen_digitalizado = buffer;
+        const resp = await CA.save();
+        if(!resp)
+        	return res.json({ok: false, message: 'Error al guardar el documento en la bd'});
+        res.json({ok: true, resp});
     } catch (error) {
         res.json({ok: false, error});
     }
@@ -70,29 +62,20 @@ module.exports.putCuerpoAcademicoDic = async (req, res) => {
 
 module.exports.getCuerpoAcademicoDic = async (req, res) => {
     try {
+    	//Issue 2: Debido al Issue 1, solo obtiene el ultimo dictamen guardado
+    	//Se deben buscar con la id, al schema le falta una id
         var codigo = req.params.id;
         var dir = './Files/temp/'+codigo+'.pdf';
-        await CuerpoAcademico.findOne({clave: codigo}, function(err,CA){
-            console.log('buscando documento');
-            if(err)
-            {
-                console.log('error de busqueda');
-            }
-
-            buffer = CA.dictamen_digitalizado;
+        const CA = await CuerpoAcademico.findOne({clave: codigo});
+        const buffer = CA.dictamen_digitalizado;
+        var errorH;
+        await fsp.writeFile(dir, buffer).catch(function errHandler(e){
+        	errorH = e;
         });
-        await fs.writeFile(dir, buffer, function(err){
-            console.log('escribiendo documento');
-            if(err)
-            {
-                console.log('error de escritura');
-            }
-            res.download(dir, 'Dictamen'+codigo+'.pdf', function(err){
-                fs.unlink(dir, function(err){
-                    if(err)
-                        console.log(err);
-                    });
-            });
+        if(errorH)
+        	return res.json({ok: false, errorH});
+        res.download(dir, 'Dictamen'+codigo+'.pdf', function(err){
+            fsp.unlink(dir);
         });
         
     } catch (error) {
