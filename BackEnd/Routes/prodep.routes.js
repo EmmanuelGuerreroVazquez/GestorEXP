@@ -6,7 +6,8 @@ const prodepCtrl = require('../Controllers/prodep.controller');
 const prodepExpedienteCtrl = require('../Controllers/prodep_expediente.controller');
 const prodepDictamenCtrl = require('../Controllers/prodep_dictamen.controller');
 const authCtrl = require('../Controllers/auth.controller');
-const archivos = require('../Middlewares/multer').uploadFile;
+const archivos = require('../middlewares/multer').uploadFile;
+
 app.use(authCtrl.validarCredenciales);
 
 app.post(
@@ -19,10 +20,7 @@ app.put(
   authCtrl.limitarAcceso('coordinador de personal'),
   prodepCtrl.actualizarProdep
 );
-app.get(
-  '/:codigo',
-  prodepCtrl.verProdep
-);
+app.get('/:codigo', prodepCtrl.verProdep);
 
 app.post(
   '/:codigo/expediente',
@@ -41,10 +39,7 @@ app.get(
   authCtrl.limitarAcceso('coordinador de personal', 'maestro'),
   prodepExpedienteCtrl.descargarExpediente
 );
-app.get(
-  '/:codigo/expediente',
-  prodepExpedienteCtrl.verExpediente
-);
+app.get('/:codigo/expediente', prodepExpedienteCtrl.verExpediente);
 
 app.post(
   '/:codigo/dictamen',
@@ -63,9 +58,6 @@ app.get(
   authCtrl.limitarAcceso('coordinador de personal', 'maestro'),
   prodepDictamenCtrl.descargarDictamen
 );
-app.get(
-  '/:codigo/dictamen',
-  prodepDictamenCtrl.verDictamen
-);
+app.get('/:codigo/dictamen', prodepDictamenCtrl.verDictamen);
 
 module.exports = app;

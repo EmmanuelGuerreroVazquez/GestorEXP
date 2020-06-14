@@ -66,12 +66,14 @@ exports.iniciarSesion = catchAsync(async (req, res, next) => {
 
 const isTokenValido = async (req, res, next) => {
   // Obtener solicitud y revisar que existe el token
+
   let token;
+
   if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
+    req.headers.authorization !== null ||
+    req.headers.authorization.startsWith('Bearer') !== null
   ) {
-    token = req.headers.authorization.split(' ')[1];
+    token = req.headers.authorization;
   }
   if (!token) {
     return {

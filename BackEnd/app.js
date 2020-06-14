@@ -1,13 +1,22 @@
 const express = require('express');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 
 // Handlers de errores
 const AppError = require('./Helpers/appError');
-const globalErrorHandler = require('./Middlewares/globalErrorHandler');
+const globalErrorHandler = require('./middlewares/globalErrorHandler');
 
 const app = express();
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', '*');
+
+  //res.header('', 'Authorization, X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Request-Method');
+  next();
+});
+app.use(cors());
 // muestra logs de rutas llamadas (solo usar en development, nunca en produccion)
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
